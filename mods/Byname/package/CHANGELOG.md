@@ -2,9 +2,10 @@
 
 ## 0.2.0
 
-- Added `/byname`, which explains the standing title: which fragment earned each slot and
-  the numbers behind it, when it next rerolls, and the five titles you are closest to
-  earning. Works as `/byname` in chat and `byname` in the console.
+- Added `/byname`, which explains the standing title: which fragment earned each slot, the
+  numbers behind it, and when it next rerolls. Works as `/byname` in chat and `byname` in
+  the console. It does not list titles you are close to earning, by design — a byname
+  records how you played rather than giving you something to grind toward.
 - A title can no longer cite the same underlying statistic twice. "Sodden Drowned of the
   Green Hall" counted death-by-drowning for two of its three slots; it now reads
   "Drowned of the Green Hall".

@@ -189,7 +189,10 @@ namespace Byname.Titles
 
         /// <summary>
         /// What the player is closest to earning but has not, most nearly earned first.
-        /// Shared by the verbose log and the /byname command so the two can never disagree.
+        ///
+        /// Diagnostic only, and deliberately not surfaced to players: /byname explains the
+        /// title someone already has rather than dangling the next one. This exists so a
+        /// badly calibrated threshold shows up in the log as "80% of the way there".
         /// </summary>
         internal static List<KeyValuePair<TitleFragment, float>> NearMisses(
             IStatSource stats, int count, float floor = 0.25f)

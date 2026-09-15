@@ -73,14 +73,12 @@ You are Drowned of the Green Hall  (Rare)
   Green Hall         harvest crop: 520 (needed 400)
 
 Standing since day 84 — rerolls on day 94 if nothing changes.
-
-Closest to earning:
-  Deep-Drowned        80%  death by drowning: 12 (needed 15)
-  Gravewalker         80%  deaths: 24 (needed 30)
-  Hallwright          75%  largest roof cluster: 90 (needed 120)
 ```
 
 It reads your own statistics only, changes nothing, and needs no `devcommands`.
+
+It deliberately does not tell you what you are close to earning. A byname is a record of how
+you played, not a list of chores — knowing the next threshold would turn it into one.
 
 ## Requirements
 

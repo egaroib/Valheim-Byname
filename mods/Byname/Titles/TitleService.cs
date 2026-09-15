@@ -124,6 +124,10 @@ namespace Byname.Titles
         /// <summary>
         /// The human-readable answer to "why am I called this", for the /byname command.
         ///
+        /// Answers only that question. It does not say what is nearly earned: the point of
+        /// the mod is that a title reflects how someone played, not that it gives them
+        /// something to grind toward.
+        ///
         /// Recomputes at the CURRENT epoch rather than advancing it, so asking the question
         /// can never change the answer. If the recomputed title differs from the standing
         /// one, the player has earned something since their last trigger and is told what
@@ -182,16 +186,10 @@ namespace Byname.Titles
                     : $"Standing since day {lastChange} \u2014 due to reroll at your next spawn or sleep.");
             }
 
-            var misses = TitleEngine.NearMisses(stats, 5);
-            if (misses.Count > 0)
-            {
-                lines.Add("");
-                lines.Add("Closest to earning:");
-                foreach (var m in misses)
-                {
-                    lines.Add($"  {m.Key.Text,-18} {m.Value,4:P0}  {m.Key.Describe(stats)}");
-                }
-            }
+            // Deliberately no "closest to earning" list. A title is meant to be a record
+            // of what you did, not a checklist to farm — showing the next threshold turns
+            // it into one. Near-misses still go to the log behind VerboseLogging, where
+            // they exist to calibrate thresholds rather than to steer play.
 
             return lines;
         }

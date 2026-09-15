@@ -292,14 +292,8 @@ namespace TitlePreview
                 foreach (var part in composed.Parts)
                     Console.WriteLine($"  {part.Text,-18} {part.Describe(stats)}");
 
-                var misses = TitleEngine.NearMisses(stats, 5);
-                if (misses.Count > 0)
-                {
-                    Console.WriteLine();
-                    Console.WriteLine("Closest to earning:");
-                    foreach (var m in misses)
-                        Console.WriteLine($"  {m.Key.Text,-18} {m.Value,4:P0}  {m.Key.Describe(stats)}");
-                }
+                // No near-miss list: /byname does not show one, and this exists to match
+                // what players actually see. NearMisses stays a log-only diagnostic.
                 Console.WriteLine();
             }
         }
