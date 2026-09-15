@@ -6,7 +6,9 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using Byname.Commands;
 using Byname.Config;
+using Jotunn.Managers;
 using Jotunn.Utils;
 
 namespace Byname
@@ -24,7 +26,7 @@ namespace Byname
     {
         public const string PluginGuid = "com.ragemedia.byname";
         public const string PluginName = "Byname";
-        public const string PluginVersion = "0.1.0";
+        public const string PluginVersion = "0.2.0";
 
         internal static BynamePlugin Instance;
 
@@ -36,6 +38,11 @@ namespace Byname
             BindConfig();
             _harmony.PatchAll(Assembly.GetExecutingAssembly());
             VerifyPatches();
+
+            // Registers for both '/byname' in chat and 'byname' in the F5 console: both
+            // route through Terminal's shared command dictionary.
+            CommandManager.Instance.AddConsoleCommand(new BynameCommand());
+            LogInfo("Registered /byname.");
         }
 
         private void OnDestroy()

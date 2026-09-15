@@ -100,7 +100,7 @@ namespace Byname.Titles
             Announce(player, composed, firstEver: standing == null);
         }
 
-        private static IStatSource BuildStatSource(Player player)
+        internal static IStatSource BuildStatSource(Player player)
         {
             var lifetime = new LifetimeStatSource(Game.instance.GetPlayerProfile());
             if (BynameConfig.Scope.Value != StatScope.World) return lifetime;
@@ -119,6 +119,81 @@ namespace Byname.Titles
             }
 
             return new WorldStatSource(lifetime, baseline);
+        }
+
+        /// <summary>
+        /// The human-readable answer to "why am I called this", for the /byname command.
+        ///
+        /// Recomputes at the CURRENT epoch rather than advancing it, so asking the question
+        /// can never change the answer. If the recomputed title differs from the standing
+        /// one, the player has earned something since their last trigger and is told what
+        /// they will become rather than being quietly shown a title they are not wearing.
+        /// </summary>
+        internal static List<string> Explain(Player player)
+        {
+            var lines = new List<string>();
+
+            if (!BynameConfig.Enabled.Value)
+            {
+                lines.Add("Byname is disabled on this server.");
+                return lines;
+            }
+
+            if (player == null || Game.instance == null)
+            {
+                lines.Add("No character loaded.");
+                return lines;
+            }
+
+            var stats = BuildStatSource(player);
+            var epoch = TitleState.GetEpoch(player);
+            var standing = TitleState.GetTitle(player);
+            var composed = TitleEngine.Compose(stats, player.GetPlayerID(), epoch);
+
+            if (composed == null)
+            {
+                lines.Add("You have no title yet.");
+                return lines;
+            }
+
+            var shown = standing ?? composed.Text;
+            lines.Add($"You are {Decorate(shown, TitleState.GetRarity(player))}  ({composed.Rarity})");
+
+            if (standing != null && !string.Equals(standing, composed.Text, StringComparison.Ordinal))
+            {
+                lines.Add($"  You have earned a new one since: next update makes you {composed.Text}.");
+            }
+
+            lines.Add("");
+            foreach (var part in composed.Parts)
+            {
+                lines.Add($"  {part.Text,-18} {part.Describe(stats)}");
+            }
+
+            var day = EnvMan.instance != null ? EnvMan.instance.GetDay() : 0;
+            var lastChange = TitleState.GetLastChangeDay(player);
+            var stale = BynameConfig.StalenessDays.Value;
+            if (lastChange >= 0 && stale > 0)
+            {
+                var due = lastChange + stale;
+                lines.Add("");
+                lines.Add(due > day
+                    ? $"Standing since day {lastChange} \u2014 rerolls on day {due} if nothing changes."
+                    : $"Standing since day {lastChange} \u2014 due to reroll at your next spawn or sleep.");
+            }
+
+            var misses = TitleEngine.NearMisses(stats, 5);
+            if (misses.Count > 0)
+            {
+                lines.Add("");
+                lines.Add("Closest to earning:");
+                foreach (var m in misses)
+                {
+                    lines.Add($"  {m.Key.Text,-18} {m.Value,4:P0}  {m.Key.Describe(stats)}");
+                }
+            }
+
+            return lines;
         }
 
         private static void Announce(Player player, ComposedTitle composed, bool firstEver)

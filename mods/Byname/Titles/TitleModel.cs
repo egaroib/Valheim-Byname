@@ -81,6 +81,15 @@ namespace Byname.Titles
         /// </summary>
         internal bool IsFallback { get; }
 
+        /// <summary>
+        /// What this fragment draws on, as opaque keys. Two fragments sharing one may not
+        /// appear in the same title: "Sodden Drowned of the Green Hall" cited death by
+        /// drowning twice, which reads as padding and looks obviously silly the moment the
+        /// title has to explain itself. Stronger than the category rule, which cannot see
+        /// that two Death fragments read the very same counter.
+        /// </summary>
+        internal IReadOnlyCollection<string> SourceKeys { get; }
+
         private readonly Func<IStatSource, bool> _qualifies;
 
         /// <summary>
@@ -88,6 +97,12 @@ namespace Byname.Titles
         /// Null when the fragment's condition has no meaningful notion of progress.
         /// </summary>
         private readonly Func<IStatSource, float> _progress;
+
+        /// <summary>
+        /// A human clause saying what earned this, with the numbers behind it, for the
+        /// /byname command. Null falls back to the fragment's own name.
+        /// </summary>
+        private readonly Func<IStatSource, string> _describe;
 
         internal TitleFragment(
             string id,
@@ -98,7 +113,9 @@ namespace Byname.Titles
             Func<IStatSource, bool> qualifies,
             IReadOnlyList<PlayerStatType> reads,
             Func<IStatSource, float> progress = null,
-            bool isFallback = false)
+            bool isFallback = false,
+            Func<IStatSource, string> describe = null,
+            IReadOnlyCollection<string> sourceKeys = null)
         {
             Id = id;
             Slot = slot;
@@ -109,6 +126,8 @@ namespace Byname.Titles
             Reads = reads ?? Array.Empty<PlayerStatType>();
             _progress = progress;
             IsFallback = isFallback;
+            _describe = describe;
+            SourceKeys = sourceKeys ?? Reads.Select(r => r.ToString()).ToArray();
         }
 
         internal bool Qualifies(IStatSource stats)
@@ -139,6 +158,47 @@ namespace Byname.Titles
         }
 
         /// <summary>
+        /// What earned this, in a sentence a player can read. Never throws: this is called
+        /// from a chat command and a broken clause must not eat the whole answer.
+        /// </summary>
+        internal string Describe(IStatSource stats)
+        {
+            if (_describe == null) return Text;
+            try { return _describe(stats); }
+            catch { return Text; }
+        }
+
+        /// <summary>
+        /// Turns a PlayerStatType name into readable words: DeathByDrowning becomes
+        /// "death by drowning". Mechanical rather than hand-written, so all 254 fragments
+        /// explain themselves without anyone maintaining a parallel list of prose.
+        /// </summary>
+        internal static string Humanize(PlayerStatType stat)
+        {
+            var name = stat.ToString();
+
+            // These are maxima over one connected cluster, not running totals, and the
+            // literal split ("build cluster roof") actively misleads about that.
+            if (name.StartsWith("BuildCluster"))
+            {
+                return "largest " + name.Substring("BuildCluster".Length).ToLowerInvariant() +
+                       " cluster";
+            }
+
+            var sb = new System.Text.StringBuilder(name.Length + 8);
+            for (var i = 0; i < name.Length; i++)
+            {
+                var c = name[i];
+                if (i > 0 && char.IsUpper(c) && !char.IsUpper(name[i - 1])) sb.Append(' ');
+                sb.Append(char.ToLowerInvariant(c));
+            }
+            return sb.ToString();
+        }
+
+        internal static string Number(float v) =>
+            v >= 1000f ? v.ToString("N0") : v.ToString("0.##");
+
+        /// <summary>
         /// The common shape: one stat at or above a threshold. Progress falls out of the
         /// same two numbers, so near-miss reporting costs nothing at the call site.
         /// </summary>
@@ -151,7 +211,8 @@ namespace Byname.Titles
                 id, slot, category, rarity, text,
                 s => s.Get(stat) >= threshold,
                 reads,
-                s => threshold <= 0f ? 1f : s.Get(stat) / threshold);
+                s => threshold <= 0f ? 1f : s.Get(stat) / threshold,
+                describe: s => $"{Humanize(stat)}: {Number(s.Get(stat))} (needed {Number(threshold)})");
         }
 
         /// <summary>
@@ -170,14 +231,24 @@ namespace Byname.Titles
                 id, slot, TitleCategory.Combat, rarity, text,
                 s => s.GetEnemyKills(enemyToken) >= threshold,
                 Array.Empty<PlayerStatType>(),
-                s => threshold <= 0f ? 1f : s.GetEnemyKills(enemyToken) / threshold);
+                s => threshold <= 0f ? 1f : s.GetEnemyKills(enemyToken) / threshold,
+                describe: s =>
+                {
+                    var creature = enemyToken.StartsWith("$enemy_")
+                        ? enemyToken.Substring("$enemy_".Length).Replace('_', ' ')
+                        : enemyToken;
+                    return $"{creature} kills: {Number(s.GetEnemyKills(enemyToken))} " +
+                           $"(needed {Number(threshold)})";
+                },
+                sourceKeys: new[] { enemyToken });
 
         /// <summary>A fragment with no condition, used to guarantee a fresh character is titled.</summary>
         internal static TitleFragment Always(
             string id, TitleSlot slot, TitleCategory category, string text)
             => new TitleFragment(
                 id, slot, category, Rarity.Common, text,
-                _ => true, Array.Empty<PlayerStatType>(), _ => 1f, isFallback: true);
+                _ => true, Array.Empty<PlayerStatType>(), _ => 1f, isFallback: true,
+                describe: _ => "you have yet to earn anything else");
     }
 
     /// <summary>

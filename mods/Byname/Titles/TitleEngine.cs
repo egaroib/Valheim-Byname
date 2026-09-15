@@ -31,11 +31,7 @@ namespace Byname.Titles
         {
             var seed = Seed(playerId, epoch);
 
-            var qualifying = FragmentCatalog.Fragments
-                .Where(f => BynameConfig.CategoryEnabled(f.Category))
-                .Where(f => !BynameConfig.IsBlocked(f.Id))
-                .Where(f => f.Qualifies(stats))
-                .ToList();
+            var qualifying = Qualifying(stats);
 
             if (BynameConfig.VerboseLogging.Value) LogEvaluation(stats, qualifying, seed);
 
@@ -141,19 +137,23 @@ namespace Byname.Titles
         {
             var chosen = new Dictionary<TitleSlot, TitleFragment>();
             var usedCategories = new HashSet<TitleCategory>();
+            var usedSources = new HashSet<string>();
 
             foreach (var slot in template.Slots)
             {
                 if (!ranked.TryGetValue(slot, out var candidates)) return null;
 
-                var pick = strict
-                    ? candidates.FirstOrDefault(f => !usedCategories.Contains(f.Category))
-                    : candidates.FirstOrDefault();
+                // The source rule holds even when relaxed: the category rule may be waived
+                // for a specialist, but citing one counter twice is never acceptable.
+                var pick = candidates.FirstOrDefault(f =>
+                    !f.SourceKeys.Any(usedSources.Contains) &&
+                    (!strict || !usedCategories.Contains(f.Category)));
 
                 if (pick == null) return null;
 
                 chosen[slot] = pick;
                 usedCategories.Add(pick.Category);
+                foreach (var key in pick.SourceKeys) usedSources.Add(key);
             }
 
             // Even relaxed, refuse to repeat the same word twice in one title.
@@ -179,26 +179,42 @@ namespace Byname.Titles
             return total;
         }
 
+        /// <summary>Every fragment this character currently earns, after admin filtering.</summary>
+        internal static List<TitleFragment> Qualifying(IStatSource stats) =>
+            FragmentCatalog.Fragments
+                .Where(f => BynameConfig.CategoryEnabled(f.Category))
+                .Where(f => !BynameConfig.IsBlocked(f.Id))
+                .Where(f => f.Qualifies(stats))
+                .ToList();
+
+        /// <summary>
+        /// What the player is closest to earning but has not, most nearly earned first.
+        /// Shared by the verbose log and the /byname command so the two can never disagree.
+        /// </summary>
+        internal static List<KeyValuePair<TitleFragment, float>> NearMisses(
+            IStatSource stats, int count, float floor = 0.25f)
+        {
+            var earned = new HashSet<string>(Qualifying(stats).Select(f => f.Id));
+
+            return FragmentCatalog.Fragments
+                .Where(f => !earned.Contains(f.Id) && !f.IsFallback)
+                .Where(f => BynameConfig.CategoryEnabled(f.Category) && !BynameConfig.IsBlocked(f.Id))
+                .Select(f => new KeyValuePair<TitleFragment, float>(f, f.Progress(stats)))
+                .Where(x => x.Value > floor && x.Value < 1f)
+                .OrderByDescending(x => x.Value)
+                .Take(count)
+                .ToList();
+        }
+
         private static void LogEvaluation(IStatSource stats, List<TitleFragment> qualifying, int seed)
         {
             BynamePlugin.LogVerbose(
                 $"evaluating with seed {seed}: {qualifying.Count} qualifying fragment(s) " +
                 $"[{string.Join(", ", qualifying.Select(f => f.Id).ToArray())}]");
 
-            // Near-misses. This is the diagnostic that replaces the console command we
-            // decided not to ship: it says what the player is closest to earning next.
-            var nearMisses = FragmentCatalog.Fragments
-                .Where(f => !qualifying.Contains(f))
-                .Where(f => BynameConfig.CategoryEnabled(f.Category) && !BynameConfig.IsBlocked(f.Id))
-                .Select(f => new { f.Id, Progress = f.Progress(stats) })
-                .Where(x => x.Progress > 0.5f)
-                .OrderByDescending(x => x.Progress)
-                .Take(5)
-                .ToList();
-
-            foreach (var miss in nearMisses)
+            foreach (var miss in NearMisses(stats, 5, 0.5f))
             {
-                BynamePlugin.LogVerbose($"  near miss: {miss.Id} at {miss.Progress:P0}");
+                BynamePlugin.LogVerbose($"  near miss: {miss.Key.Id} at {miss.Value:P0}");
             }
         }
 

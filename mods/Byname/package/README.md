@@ -62,6 +62,26 @@ Valheim never draws a nameplate for your own character, so Byname shows you your
 two other places: a message when it changes, and a line under your name on the inventory
 screen.
 
+## Commands
+
+`/byname` in chat, or `byname` in the console, explains your current title:
+
+```
+You are Drowned of the Green Hall  (Rare)
+
+  Drowned            death by drowning: 12 (needed 8)
+  Green Hall         harvest crop: 520 (needed 400)
+
+Standing since day 84 — rerolls on day 94 if nothing changes.
+
+Closest to earning:
+  Deep-Drowned        80%  death by drowning: 12 (needed 15)
+  Gravewalker         80%  deaths: 24 (needed 30)
+  Hallwright          75%  largest roof cluster: 90 (needed 120)
+```
+
+It reads your own statistics only, changes nothing, and needs no `devcommands`.
+
 ## Requirements
 
 - [BepInExPack Valheim](https://valheim.thunderstore.io/package/denikson/BepInExPack_Valheim/)

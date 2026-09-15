@@ -86,14 +86,19 @@ namespace Byname.Titles.Catalog
                 Rarity.Legendary, "Undying",
                 s => s.Get(PlayerStatType.Deaths) == 0 && s.Get(PlayerStatType.EnemyKills) >= 200,
                 new[] { PlayerStatType.Deaths, PlayerStatType.EnemyKills },
-                s => s.Get(PlayerStatType.EnemyKills) / 200f),
+                s => s.Get(PlayerStatType.EnemyKills) / 200f,
+                describe: s => $"{TitleFragment.Number(s.Get(PlayerStatType.EnemyKills))} kills " +
+                               "and not one death (needed 200 kills, 0 deaths)"),
 
             new TitleFragment("scarce_mourned", TitleSlot.Epithet, TitleCategory.Death,
                 Rarity.Epic, "Scarce-Mourned",
                 s => s.Get(PlayerStatType.Deaths) <= 2 &&
                      s.Get(PlayerStatType.ConsecutiveDaysSurvivedMax) >= 50,
                 new[] { PlayerStatType.Deaths, PlayerStatType.ConsecutiveDaysSurvivedMax },
-                s => s.Get(PlayerStatType.ConsecutiveDaysSurvivedMax) / 50f),
+                s => s.Get(PlayerStatType.ConsecutiveDaysSurvivedMax) / 50f,
+                describe: s => $"{TitleFragment.Number(s.Get(PlayerStatType.ConsecutiveDaysSurvivedMax))} " +
+                               $"days survived unbroken, only {TitleFragment.Number(s.Get(PlayerStatType.Deaths))} " +
+                               "deaths (needed 50 days, at most 2)"),
 
             TitleFragment.Threshold("long_lived", TitleSlot.Epithet, TitleCategory.Misc,
                 Rarity.Epic, "Long-Lived", PlayerStatType.ConsecutiveDaysSurvivedMax, 100),

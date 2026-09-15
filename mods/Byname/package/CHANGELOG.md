@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0
+
+- Added `/byname`, which explains the standing title: which fragment earned each slot and
+  the numbers behind it, when it next rerolls, and the five titles you are closest to
+  earning. Works as `/byname` in chat and `byname` in the console.
+- A title can no longer cite the same underlying statistic twice. "Sodden Drowned of the
+  Green Hall" counted death-by-drowning for two of its three slots; it now reads
+  "Drowned of the Green Hall".
+- Rescaled every BuildCluster threshold. Those statistics record the largest single
+  connected cluster a player has built, not a lifetime total, so the old values were
+  roughly 5-10x too high to ever trigger.
+
+
 ## 0.1.0
 
 First build. Shared privately for testing.

@@ -19,25 +19,33 @@ namespace Byname.Titles.Catalog
                 Rarity.Legendary, "Bare-Fisted",
                 s => s.DominantKillStyle() == KillModifiers.Unarmed &&
                      s.Get(PlayerStatType.EnemyKills) >= 100,
-                new[] { PlayerStatType.EnemyKills }),
+                new[] { PlayerStatType.EnemyKills },
+                describe: s => $"most of your {TitleFragment.Number(s.Get(PlayerStatType.EnemyKills))} " +
+                               $"kills are unarmed (needed 100+, and a clear majority)"),
 
             new TitleFragment("far_shooting", TitleSlot.Epithet, TitleCategory.Combat,
                 Rarity.Rare, "Far-Shooting",
                 s => s.DominantKillStyle() == KillModifiers.Ranged &&
                      s.Get(PlayerStatType.EnemyKills) >= 200,
-                new[] { PlayerStatType.EnemyKills }),
+                new[] { PlayerStatType.EnemyKills },
+                describe: s => $"most of your {TitleFragment.Number(s.Get(PlayerStatType.EnemyKills))} " +
+                               $"kills are ranged (needed 200+, and a clear majority)"),
 
             new TitleFragment("rune_handed", TitleSlot.Epithet, TitleCategory.Combat,
                 Rarity.Epic, "Rune-Handed",
                 s => s.DominantKillStyle() == KillModifiers.Magic &&
                      s.Get(PlayerStatType.EnemyKills) >= 200,
-                new[] { PlayerStatType.EnemyKills }),
+                new[] { PlayerStatType.EnemyKills },
+                describe: s => $"most of your {TitleFragment.Number(s.Get(PlayerStatType.EnemyKills))} " +
+                               $"kills are magic (needed 200+, and a clear majority)"),
 
             new TitleFragment("close_fighting", TitleSlot.Epithet, TitleCategory.Combat,
                 Rarity.Uncommon, "Close-Fighting",
                 s => s.DominantKillStyle() == KillModifiers.Melee &&
                      s.Get(PlayerStatType.EnemyKills) >= 300,
-                new[] { PlayerStatType.EnemyKills }),
+                new[] { PlayerStatType.EnemyKills },
+                describe: s => $"most of your {TitleFragment.Number(s.Get(PlayerStatType.EnemyKills))} " +
+                               $"kills are melee (needed 300+, and a clear majority)"),
 
             // --- Volume ------------------------------------------------------
             TitleFragment.Threshold("blood_worn", TitleSlot.Epithet, TitleCategory.Combat,

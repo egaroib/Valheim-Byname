@@ -42,6 +42,18 @@ namespace TitlePreview
                 return;
             }
 
+            if (args.Any(a => a.Equals("combinations", StringComparison.OrdinalIgnoreCase)))
+            {
+                Combinations();
+                return;
+            }
+
+            if (args.Any(a => a.Equals("explain", StringComparison.OrdinalIgnoreCase)))
+            {
+                Explain();
+                return;
+            }
+
             var archetypes = new (string Name, FakeStats Stats)[]
             {
                 ("Fresh character", new FakeStats(S())),
@@ -185,6 +197,111 @@ namespace TitlePreview
             Console.WriteLine($"Untouched stats ({unused.Count}):");
             for (var i = 0; i < unused.Count; i += 4)
                 Console.WriteLine("  " + string.Join("  ", unused.Skip(i).Take(4).Select(x => $"{x,-28}")).TrimEnd());
+        }
+
+
+        /// <summary>
+        /// Every distinct title the grammar can render: each template crossed with every
+        /// legal fill, subject to the length cap and the same-category rule. Counts what
+        /// the engine CAN emit, not what any one player will see.
+        /// </summary>
+        private static void Combinations()
+        {
+            var frags = FragmentCatalog.Fragments;
+            var bySlot = Enum.GetValues(typeof(TitleSlot)).Cast<TitleSlot>()
+                .ToDictionary(sl => sl, sl => frags.Where(f => f.Slot == sl).ToList());
+
+            var max = Byname.Config.BynameConfig.MaxTitleLength.Value;
+            Console.WriteLine($"{frags.Count} fragments " +
+                              $"({bySlot[TitleSlot.Epithet].Count} epithet, " +
+                              $"{bySlot[TitleSlot.Noun].Count} noun, " +
+                              $"{bySlot[TitleSlot.Domain].Count} domain), " +
+                              $"MaxTitleLength {max}\n");
+
+            long grandDistinct = 0, grandAny = 0;
+            var seen = new HashSet<string>();
+
+            Console.WriteLine($"{"TEMPLATE",-36}{"DISTINCT-CAT",14}{"ANY-CAT",11}{"TOO LONG",10}");
+            foreach (var t in FragmentCatalog.Templates)
+            {
+                long distinct = 0, any = 0, tooLong = 0;
+
+                foreach (var combo in Fills(t.Slots.ToList(), bySlot))
+                {
+                    var map = combo.ToDictionary(f => f.Slot, f => f);
+                    var text = t.Render(map);
+                    if (text.Length > max) { tooLong++; continue; }
+
+                    any++;
+                    seen.Add(text);
+                    if (combo.Select(f => f.Category).Distinct().Count() == combo.Count) distinct++;
+                }
+
+                grandDistinct += distinct;
+                grandAny += any;
+                Console.WriteLine($"{t.Pattern,-36}{distinct,14:N0}{any,11:N0}{tooLong,10:N0}");
+            }
+
+            Console.WriteLine($"{"TOTAL",-36}{grandDistinct,14:N0}{grandAny,11:N0}");
+            Console.WriteLine($"\ndistinct rendered strings: {seen.Count:N0}");
+        }
+
+        private static IEnumerable<List<TitleFragment>> Fills(
+            List<TitleSlot> slots, Dictionary<TitleSlot, List<TitleFragment>> bySlot)
+        {
+            if (slots.Count == 0) { yield return new List<TitleFragment>(); yield break; }
+            var head = slots[0];
+            var rest = slots.Skip(1).ToList();
+            foreach (var f in bySlot[head])
+                foreach (var tail in Fills(rest, bySlot))
+                {
+                    tail.Insert(0, f);
+                    yield return tail;
+                }
+        }
+
+
+        /// <summary>
+        /// Reproduces what /byname prints, minus the game-dependent lines (standing-since
+        /// day, rarity colour). Exists to check that the auto-generated clauses actually
+        /// read like English before they reach a player.
+        /// </summary>
+        private static void Explain()
+        {
+            var samples = new (string Name, FakeStats Stats)[]
+            {
+                ("Drowns constantly, keeps bees, farms", new FakeStats(S(
+                    (PlayerStatType.DeathByDrowning, 12), (PlayerStatType.Deaths, 24),
+                    (PlayerStatType.BeesHarvested, 130), (PlayerStatType.HarvestCrop, 520),
+                    (PlayerStatType.DistanceTraveled, 90000), (PlayerStatType.DistanceWalk, 61204),
+                    (PlayerStatType.BuildClusterRoof, 90)))),
+
+                ("Punches everything to death", new FakeStats(S(
+                    (PlayerStatType.EnemyKills, 1400), (PlayerStatType.Deaths, 62),
+                    (PlayerStatType.HitsTakenEnemies, 5400), (PlayerStatType.DistanceRun, 80000)),
+                    KillModifiers.Unarmed,
+                    new Dictionary<string, float> { { "$enemy_troll", 27 }, { "$enemy_greydwarf", 800 } })),
+            };
+
+            foreach (var (name, stats) in samples)
+            {
+                var composed = TitleEngine.Compose(stats, 585858L, 0);
+                Console.WriteLine($"--- {name} ---");
+                Console.WriteLine($"You are {composed.Text}  ({composed.Rarity})");
+                Console.WriteLine();
+                foreach (var part in composed.Parts)
+                    Console.WriteLine($"  {part.Text,-18} {part.Describe(stats)}");
+
+                var misses = TitleEngine.NearMisses(stats, 5);
+                if (misses.Count > 0)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("Closest to earning:");
+                    foreach (var m in misses)
+                        Console.WriteLine($"  {m.Key.Text,-18} {m.Value,4:P0}  {m.Key.Describe(stats)}");
+                }
+                Console.WriteLine();
+            }
         }
 
     }
