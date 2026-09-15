@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Deliberately does not import the repository root Directory.Build.props.
+
+  MSBuild stops walking up at the first Directory.Build.props it finds, so this file
+  shields everything under tools/ from the root one, which pins net462 and hard-fails
+  the build when a Valheim install is not configured. Tools here are ordinary desktop
+  .NET programs that must run without the game present.
+-->
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,29 @@
+{
+  "mod": "Byname",
+  "targets": [
+    {
+      "type": "EnemyHud",
+      "method": "ShowHud"
+    },
+    {
+      "type": "Game",
+      "method": "RPC_RegisterKill"
+    },
+    {
+      "type": "InventoryGui",
+      "method": "UpdateCharacterStats"
+    },
+    {
+      "type": "Player",
+      "method": "GetHoverName"
+    },
+    {
+      "type": "Player",
+      "method": "OnSpawned"
+    },
+    {
+      "type": "Player",
+      "method": "SetSleeping"
+    }
+  ]
+}

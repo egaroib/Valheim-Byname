@@ -1,0 +1,33 @@
+# This working directory holds several unrelated Valheim mods, but the repository it is
+# pushed to publishes only Byname. So the rule is allow-list, not deny-list: everything is
+# ignored by default and each published path is named explicitly. That way `git add -A`
+# cannot sweep another mod into a public repo by accident.
+
+/*
+!/.gitignore
+!/README.md
+!/LICENSE
+!/Directory.Build.props
+!/mods/
+!/tools/
+
+/mods/*
+!/mods/Byname/
+
+/tools/*
+!/tools/Directory.Build.props
+!/tools/title-preview/
+
+# Machine-specific paths. Environment.props is generated from valheim.env by the toolchain
+# and points at one particular Steam install and Gale profile.
+valheim.env
+Environment.props
+
+# Decompiled game source: large, regenerable, and not ours to redistribute.
+.valheim-src/
+.valheim-src.prev/
+
+# Build output
+bin/
+obj/
+dist/

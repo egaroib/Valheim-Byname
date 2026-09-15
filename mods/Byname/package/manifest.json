@@ -1,0 +1,10 @@
+{
+  "name": "Byname",
+  "version_number": "0.1.0",
+  "website_url": "https://github.com/egaroib/Valheim-Byname",
+  "description": "Earn a Viking byname from what you actually do. Titles generate from your own deeds and change as you play.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2350",
+    "ValheimModding-Jotunn-2.30.0"
+  ]
+}

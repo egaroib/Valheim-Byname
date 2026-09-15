@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <AssemblyName>title-preview</AssemblyName>
+    <RootNamespace>TitlePreview</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>CS0649;CS0168</NoWarn>
+
+    <!-- Overridable: dotnet run -p:ModRoot=../../mods/SomeOtherMod -->
+    <ModRoot Condition="'$(ModRoot)' == ''">$(MSBuildThisFileDirectory)../../mods/Byname</ModRoot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Stub game enums and a stand-in config, so this runs with no Valheim install. -->
+    <Compile Include="shims/**/*.cs" />
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The REAL engine and catalog, compiled straight from the mod source. That is the
+      whole point: what this prints is what the mod will produce, not a reimplementation
+      that can quietly drift out of step with it.
+    -->
+    <Compile Include="$(ModRoot)/Stats/IStatSource.cs" />
+    <Compile Include="$(ModRoot)/Titles/TitleModel.cs" />
+    <Compile Include="$(ModRoot)/Titles/FragmentCatalog.cs" />
+    <Compile Include="$(ModRoot)/Titles/TitleEngine.cs" />
+    <Compile Include="$(ModRoot)/Titles/Catalog/*.cs" />
+  </ItemGroup>
+
+  <Target Name="AssertModRoot" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(ModRoot)/Titles/TitleEngine.cs')"
+           Text="ModRoot '$(ModRoot)' does not contain Titles/TitleEngine.cs." />
+  </Target>
+
+</Project>
