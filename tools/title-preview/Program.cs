@@ -11,14 +11,20 @@ namespace TitlePreview
         private readonly Dictionary<PlayerStatType, float> _v;
         private readonly KillModifiers _style;
         private readonly Dictionary<string, float> _kills;
+        private readonly Dictionary<string, float> _deathsBy;
+        private readonly Dictionary<string, float> _deathsIn;
 
         internal FakeStats(Dictionary<PlayerStatType, float> v,
                            KillModifiers style = KillModifiers.MixedAndTotal,
-                           Dictionary<string, float> kills = null)
+                           Dictionary<string, float> kills = null,
+                           Dictionary<string, float> deathsBy = null,
+                           Dictionary<string, float> deathsIn = null)
         {
             _v = v;
             _style = style;
             _kills = kills ?? new Dictionary<string, float>();
+            _deathsBy = deathsBy ?? new Dictionary<string, float>();
+            _deathsIn = deathsIn ?? new Dictionary<string, float>();
         }
 
         public float Get(PlayerStatType s) => _v.TryGetValue(s, out var x) ? x : 0f;
@@ -27,6 +33,8 @@ namespace TitlePreview
         public string TopEnemy()
             => _kills.Count == 0 ? null : _kills.OrderByDescending(p => p.Value).First().Key;
         public KillModifiers DominantKillStyle(float minimumShare = 0.6f) => _style;
+        public float GetDeathsBy(string t) => _deathsBy.TryGetValue(t, out var x) ? x : 0f;
+        public float GetDeathsIn(string b) => _deathsIn.TryGetValue(b, out var x) ? x : 0f;
     }
 
     internal static class Program
@@ -51,6 +59,24 @@ namespace TitlePreview
             if (args.Any(a => a.Equals("explain", StringComparison.OrdinalIgnoreCase)))
             {
                 Explain();
+                return;
+            }
+
+            if (args.Any(a => a.Equals("lint", StringComparison.OrdinalIgnoreCase)))
+            {
+                Lint();
+                return;
+            }
+
+            if (args.Any(a => a.Equals("ladders", StringComparison.OrdinalIgnoreCase)))
+            {
+                Ladders();
+                return;
+            }
+
+            if (args.Any(a => a.Equals("server", StringComparison.OrdinalIgnoreCase)))
+            {
+                Server();
                 return;
             }
 
@@ -289,8 +315,8 @@ namespace TitlePreview
                 Console.WriteLine($"--- {name} ---");
                 Console.WriteLine($"You are {composed.Text}  ({composed.Rarity})");
                 Console.WriteLine();
-                foreach (var part in composed.Parts)
-                    Console.WriteLine($"  {part.Text,-18} {part.Describe(stats)}");
+                for (var i = 0; i < composed.Parts.Count; i++)
+                    Console.WriteLine($"  {composed.Words[i],-18} {composed.Parts[i].Describe(stats)}");
 
                 // No near-miss list: /byname does not show one, and this exists to match
                 // what players actually see. NearMisses stays a log-only diagnostic.
@@ -298,5 +324,131 @@ namespace TitlePreview
             }
         }
 
+
+        /// <summary>
+        /// Catalog mistakes that compile fine and fail quietly: a duplicated id (the
+        /// blocklist then removes two fragments), one word shared by two fragments (two
+        /// deeds that read as the same thing), and a word so long it can never fit.
+        /// </summary>
+        private static void Lint()
+        {
+            var frags = FragmentCatalog.Fragments;
+            var problems = 0;
+
+            foreach (var dup in frags.GroupBy(f => f.Id).Where(g => g.Count() > 1))
+            {
+                Console.WriteLine($"duplicate id: {dup.Key}");
+                problems++;
+            }
+
+            var words = frags.SelectMany(f => f.Texts.Select(t => (Word: t, f.Id)))
+                .GroupBy(x => x.Word, StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Select(x => x.Id).Distinct().Count() > 1);
+            foreach (var w in words)
+            {
+                Console.WriteLine($"word used by several fragments: {w.Key} ({string.Join(", ", w.Select(x => x.Id))})");
+                problems++;
+            }
+
+            var max = Byname.Config.BynameConfig.MaxTitleLength.Value;
+            foreach (var f in frags)
+            foreach (var t in f.Texts)
+            {
+                // "the {epithet}" is the shortest pattern any slot can appear in.
+                var shortest = f.Slot == TitleSlot.Domain ? $"x of the {t}" : $"The {t}";
+                if (shortest.Length > max)
+                {
+                    Console.WriteLine($"never fits in {max} chars: {f.Id} '{t}'");
+                    problems++;
+                }
+            }
+
+            var variants = frags.Sum(f => f.Texts.Count);
+            Console.WriteLine($"{frags.Count} fragments, {variants} wordings, {problems} problem(s)");
+        }
+
+        /// <summary>
+        /// Three friends on one server: the same boss kills, the same hall, similar
+        /// distances. The case that made everyone "of the Open Sky" in 0.2.0.
+        /// </summary>
+        private static void Server()
+        {
+            var shared = new (PlayerStatType, float)[]
+            {
+                (PlayerStatType.BossKills, 4), (PlayerStatType.BossKillMultiplayer, 4),
+                (PlayerStatType.PlayerSpawn, 40), (PlayerStatType.Sleep, 70),
+            };
+
+            FakeStats Make(Dictionary<string, float> deathsBy, Dictionary<string, float> deathsIn,
+                           params (PlayerStatType, float)[] own)
+                => new FakeStats(S(shared.Concat(own).ToArray()), KillModifiers.Melee, null, deathsBy, deathsIn);
+
+            var players = new (string Name, long Id, FakeStats Stats)[]
+            {
+                ("Builder, dies in the swamp", 11111L, Make(
+                    new Dictionary<string, float> { { "$enemy_draugr", 2 }, { "$enemy_blob", 2 } },
+                    new Dictionary<string, float> { { "Swamp", 5 } },
+                    (PlayerStatType.BuiltPieces, 4200), (PlayerStatType.BuildClusterFloor, 310),
+                    (PlayerStatType.BuildClusterRoof, 260), (PlayerStatType.BuildClusterWall, 420),
+                    (PlayerStatType.DistanceTraveled, 180000), (PlayerStatType.DistanceAir, 16000),
+                    (PlayerStatType.DistanceWalk, 70000), (PlayerStatType.EnemyKills, 700),
+                    (PlayerStatType.Deaths, 11), (PlayerStatType.DeathByEnemyHit, 7),
+                    (PlayerStatType.DeathByPoisoned, 2), (PlayerStatType.TombstonesOpenedOwn, 10))),
+
+                ("Builder, farms", 585858L, Make(null, null,
+                    (PlayerStatType.BuiltPieces, 2600), (PlayerStatType.BuildClusterFloor, 310),
+                    (PlayerStatType.BuildClusterRoof, 260), (PlayerStatType.BuildClusterWall, 420),
+                    (PlayerStatType.HarvestCrop, 330), (PlayerStatType.DistanceTraveled, 140000),
+                    (PlayerStatType.DistanceAir, 9000), (PlayerStatType.EnemyKills, 350),
+                    (PlayerStatType.Deaths, 6), (PlayerStatType.DeathByEnemyHit, 4))),
+
+                ("Explorer, sails", 9090909L, Make(null, null,
+                    (PlayerStatType.BuiltPieces, 900), (PlayerStatType.DistanceTraveled, 320000),
+                    (PlayerStatType.DistanceSail, 70000), (PlayerStatType.DistanceSailHelm, 52000),
+                    (PlayerStatType.DistanceAir, 21000), (PlayerStatType.EnemyKills, 1100),
+                    (PlayerStatType.TreasureBuriedFound, 12), (PlayerStatType.PortalDungeonIn, 22),
+                    (PlayerStatType.Deaths, 14), (PlayerStatType.DeathByEnemyHit, 9),
+                    (PlayerStatType.DeathByDrowning, 3))),
+            };
+
+            foreach (var p in players)
+            {
+                Console.WriteLine($"--- {p.Name} ---");
+                for (var epoch = 0; epoch < 4; epoch++)
+                {
+                    var t = TitleEngine.Compose(p.Stats, p.Id, epoch);
+                    Console.WriteLine($"  epoch {epoch}: {t.Describe()}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Every creature's kill words as tiers, lowest first, and a player climbing one
+        /// ladder — so a gap or an out-of-order rarity shows up before a player hits it.
+        /// </summary>
+        private static void Ladders()
+        {
+            var enemy = FragmentCatalog.Fragments
+                .Where(f => f.Slot == TitleSlot.Noun && f.Category == TitleCategory.Combat &&
+                            f.SourceKeys.Count == 1 && f.SourceKeys.First().StartsWith("$enemy_"))
+                .GroupBy(f => f.SourceKeys.First());
+
+            foreach (var g in enemy)
+            {
+                var rungs = g.OrderBy(f => f.Rarity).ToList();
+                var ordered = rungs.Select((f, i) => i == 0 || f.Rarity > rungs[i - 1].Rarity).All(x => x);
+                Console.WriteLine($"{g.Key,-24} {(ordered ? "" : "OUT OF ORDER  ")}" +
+                    string.Join("  <  ", rungs.Select(f => $"{f.Text} [{f.Rarity}]")));
+            }
+
+            Console.WriteLine("\n--- one boar hunter, climbing ---");
+            foreach (var kills in new[] { 59f, 60f, 400f, 600f, 1500f })
+            {
+                var stats = new FakeStats(S((PlayerStatType.EnemyKills, kills)), KillModifiers.MixedAndTotal,
+                    new Dictionary<string, float> { { "$enemy_boar", kills } });
+                var nouns = Enumerable.Range(0, 4).Select(e => TitleEngine.Compose(stats, 585858L, e).Text);
+                Console.WriteLine($"{kills,6} boars: {string.Join("  |  ", nouns)}");
+            }
+        }
     }
 }

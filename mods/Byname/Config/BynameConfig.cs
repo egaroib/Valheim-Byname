@@ -71,6 +71,12 @@ namespace Byname.Config
         private static readonly Dictionary<TitleCategory, ConfigEntry<bool>> Categories =
             new Dictionary<TitleCategory, ConfigEntry<bool>>();
 
+        private static readonly Dictionary<TitleCategory, ConfigEntry<float>> Weights =
+            new Dictionary<TitleCategory, ConfigEntry<float>>();
+
+        private static readonly Dictionary<TitleCategory, ConfigEntry<float>> Thresholds =
+            new Dictionary<TitleCategory, ConfigEntry<float>>();
+
         private static HashSet<string> _blockedCache;
         private static string _blockedCacheRaw;
 
@@ -170,7 +176,38 @@ namespace Byname.Config
                         $"Allow titles drawn from {CategoryBlurb(category)}.",
                         null, AdminOnly()));
             }
+
+            foreach (TitleCategory category in Enum.GetValues(typeof(TitleCategory)))
+            {
+                Weights[category] = config.Bind(
+                    "Weights", category.ToString(), CategoryDefaults.Weight(category),
+                    new ConfigDescription(
+                        $"How strongly titles drawn from {CategoryBlurb(category)} compete for a " +
+                        "place. A word's rarity (Common 1 to Legendary 5) is multiplied by this. " +
+                        "Lower it to make a category show up less, raise it to make it show up " +
+                        "more. It never changes which words are earned or the colour they show in.",
+                        new AcceptableValueRange<float>(0.1f, 3f), AdminOnly()));
+            }
+
+            foreach (TitleCategory category in Enum.GetValues(typeof(TitleCategory)))
+            {
+                Thresholds[category] = config.Bind(
+                    "Thresholds", category.ToString(), 1f,
+                    new ConfigDescription(
+                        $"Multiplies every requirement for titles drawn from {CategoryBlurb(category)}. " +
+                        "2 means twice the walls, twice the distance, twice the deaths before a " +
+                        "word is earned. Rounded up, so it also turns one-off deeds into repeat ones.",
+                        new AcceptableValueRange<float>(0.1f, 10f), AdminOnly()));
+            }
         }
+
+        /// <summary>The admin's selection weight for a category. See the Weights section.</summary>
+        internal static float Weight(TitleCategory category) =>
+            Weights.TryGetValue(category, out var entry) ? entry.Value : CategoryDefaults.Weight(category);
+
+        /// <summary>The admin's threshold multiplier for a category. See the Thresholds section.</summary>
+        internal static float ThresholdScale(TitleCategory category) =>
+            Thresholds.TryGetValue(category, out var entry) ? entry.Value : 1f;
 
         /// <summary>True when this category may contribute fragments to a title.</summary>
         internal static bool CategoryEnabled(TitleCategory category) =>

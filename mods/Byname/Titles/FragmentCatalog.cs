@@ -22,6 +22,7 @@ namespace Byname.Titles
                 .Concat(BeastFragments.All)
                 .Concat(TierFragments.All)
                 .Concat(EarlyFragments.All)
+                .Concat(DoomFragments.All)
                 .ToList();
 
         internal static IReadOnlyList<TitleFragment> Fragments => AllFragments;

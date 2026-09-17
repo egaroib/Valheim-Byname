@@ -2,6 +2,10 @@
   "mod": "Byname",
   "targets": [
     {
+      "type": "Character",
+      "method": "ApplyDamage"
+    },
+    {
       "type": "EnemyHud",
       "method": "ShowHud"
     },
@@ -16,6 +20,10 @@
     {
       "type": "Player",
       "method": "GetHoverName"
+    },
+    {
+      "type": "Player",
+      "method": "OnDeath"
     },
     {
       "type": "Player",

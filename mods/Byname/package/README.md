@@ -39,13 +39,25 @@ The {epithet}                      →  The Unflinching
 {epithet} {noun} of the {domain}   →  Quiet Tiller of the Green Hall
 ```
 
-254 fragments are drawn from 131 of Valheim's tracked statistics — deaths by cause, which
+400 fragments are drawn from 158 of Valheim's tracked statistics — deaths by cause, which
 creatures you kill and with what, trees felled by species and by the axe they needed, fish by
 quality, the largest hall you have ever raised, bees kept, sap drawn, distance sailed, how
 far out you have pushed the map without a map.
 
-Two rules keep the results honest: rarer deeds win their slot, and no two slots may come from
-the same area of play — so nobody ends up "Slaying Slayer of the Slain".
+Most deeds have two to four wordings, and each player is given one of them for good. Three
+friends who raised the same hall become a *Hallwright*, a *Roof-Raiser* and a
+*Rafter-Master*, not three Hallwrights.
+
+A few rules keep the results honest: rarer deeds win their slot, every extra word has to be
+worth adding rather than padding the title out, and no two slots may come from the same area
+of play — so nobody ends up "Slaying Slayer of the Slain".
+
+### What killed you
+
+Valheim only records that a monster killed you, not which one or where. Byname keeps its own
+record of both, so a player who keeps dying in the swamp becomes *Mire-Taken* or *Draugr-Hewn*.
+That record starts when Byname is installed — earlier deaths still count toward the general
+death titles, but not toward these.
 
 ## When your title changes
 
@@ -109,6 +121,19 @@ One switch each for `Combat`, `Bosses`, `Building`, `Death`, `Harvest`, `Travel`
 `Exploration`, `Taming`, `Fishing`, `Cooking`, `Crafting`, `Misc`. All on by default. Turn off
 the ones that do not suit your server — a serious roleplay server might drop `Death`; a
 builder server might drop `Combat`.
+
+### Weights — server-controlled (admin only)
+
+One number per category, multiplying how strongly its words compete for a slot. Building
+and Travel default to `0.85` and Harvest to `0.9`, because on a shared server everyone builds
+and travels, which makes those words the least personal. Death defaults to `1.2`: nobody
+chooses how they die. Everything else is `1`. Weights never change which words are earned or
+the colour they show in.
+
+### Thresholds — server-controlled (admin only)
+
+One multiplier per category on every requirement. `Building = 2` means twice the walls,
+floors and pieces before a building word is earned. Default `1`.
 
 ### Appearance — each player's own
 

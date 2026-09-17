@@ -7,6 +7,17 @@ launching Valheim.
 cd tools/title-preview && dotnet run
 ```
 
+Other modes:
+
+```bash
+dotnet run -- server        # three friends on one server, across four rerolls
+dotnet run -- ladders     # every creature kill ladder, and one player climbing it
+dotnet run -- lint          # duplicate ids, words shared between fragments, words too long to fit
+dotnet run -- explain       # what /byname prints
+dotnet run -- coverage      # fragments per category and slot, stats still unused
+dotnet run -- combinations  # how many distinct titles the grammar can render
+```
+
 ## Why it exists
 
 Tuning the fragment catalog means answering two questions repeatedly: *does this read
@@ -23,7 +34,7 @@ stubbed:
 |---|---|
 | `shims/PlayerStatType.cs` | Copied verbatim from the decompiled game |
 | `shims/KillModifiers.cs` | Same |
-| `shims/Shims.cs` | Stands in for `BynameConfig` and `BynamePlugin`, carrying the same default values the real config binds |
+| `shims/Shims.cs` | Stands in for `BynameConfig` and `BynamePlugin`. Category weights come from `CategoryDefaults` in the mod itself, so they cannot drift |
 
 Because the config is stubbed, this shows behaviour at **default settings**. It does not
 exercise admin category toggles, the blocklist, or World scope — those live in code paths

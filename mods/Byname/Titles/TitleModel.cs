@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Byname.Config;
 using Byname.Stats;
 
 namespace Byname.Titles
@@ -68,7 +69,15 @@ namespace Byname.Titles
         internal TitleSlot Slot { get; }
         internal TitleCategory Category { get; }
         internal Rarity Rarity { get; }
-        internal string Text { get; }
+
+        /// <summary>
+        /// Every wording of this deed. Written in the catalog as "Hallwright|Roof-Raiser", so
+        /// three friends who built the same hall are not all called the same thing.
+        /// </summary>
+        internal IReadOnlyList<string> Texts { get; }
+
+        /// <summary>The first wording. Stable, so logs and the blocklist have one name to use.</summary>
+        internal string Text => Texts[0];
 
         /// <summary>Stats this fragment consults, so World scope knows what to baseline.</summary>
         internal IReadOnlyList<PlayerStatType> Reads { get; }
@@ -121,7 +130,7 @@ namespace Byname.Titles
             Slot = slot;
             Category = category;
             Rarity = rarity;
-            Text = text;
+            Texts = text.Split('|').Select(t => t.Trim()).Where(t => t.Length > 0).ToArray();
             _qualifies = qualifies;
             Reads = reads ?? Array.Empty<PlayerStatType>();
             _progress = progress;
@@ -129,6 +138,27 @@ namespace Byname.Titles
             _describe = describe;
             SourceKeys = sourceKeys ?? Reads.Select(r => r.ToString()).ToArray();
         }
+
+        /// <summary>
+        /// The wording this player gets.
+        ///
+        /// Keyed on the player alone, never the epoch. A staleness reroll that only swapped
+        /// "Hallwright" for "Roof-Raiser" would announce a change that says nothing new, and
+        /// a player's wording of a deed is part of what makes the title theirs.
+        /// </summary>
+        internal string TextFor(long playerId)
+        {
+            if (Texts.Count == 1) return Texts[0];
+            var seed = unchecked((int)(playerId ^ (playerId >> 32)));
+            return Texts[StableHash(Id, seed) % Texts.Count];
+        }
+
+        /// <summary>
+        /// What this fragment is worth when competing for a slot: its rarity, scaled by the
+        /// admin's weight for its category. Rarity alone still decides the colour, so a
+        /// down-weighted Rare hall is still drawn in Rare blue when it does win.
+        /// </summary>
+        internal float Score => (int)Rarity * BynameConfig.Weight(Category);
 
         internal bool Qualifies(IStatSource stats)
         {
@@ -170,8 +200,8 @@ namespace Byname.Titles
 
         /// <summary>
         /// Turns a PlayerStatType name into readable words: DeathByDrowning becomes
-        /// "death by drowning". Mechanical rather than hand-written, so all 254 fragments
-        /// explain themselves without anyone maintaining a parallel list of prose.
+        /// "death by drowning". Mechanical rather than hand-written, so every fragment
+        /// explains itself without anyone maintaining a parallel list of prose.
         /// </summary>
         internal static string Humanize(PlayerStatType stat)
         {
@@ -195,6 +225,36 @@ namespace Byname.Titles
             return sb.ToString();
         }
 
+        /// <summary>
+        /// A threshold after the admin's per-category multiplier. Rounded up so a count of
+        /// deaths never asks for 1.5 of them; zero stays zero, since "never died" must not
+        /// turn into "died at most once".
+        /// </summary>
+        internal static float Scaled(TitleCategory category, float threshold)
+        {
+            if (threshold <= 0f) return threshold;
+            return (float)Math.Ceiling(threshold * BynameConfig.ThresholdScale(category));
+        }
+
+        /// <summary>
+        /// FNV-1a over the id, seeded. Hand-rolled because string.GetHashCode is not
+        /// guaranteed stable between runs, and a title that reshuffled itself on restart
+        /// would look exactly like a bug.
+        /// </summary>
+        internal static int StableHash(string id, int seed)
+        {
+            unchecked
+            {
+                var hash = (uint)seed * 2166136261u;
+                foreach (var c in id)
+                {
+                    hash ^= c;
+                    hash *= 16777619u;
+                }
+                return (int)(hash & 0x7FFFFFFF);
+            }
+        }
+
         internal static string Number(float v) =>
             v >= 1000f ? v.ToString("N0") : v.ToString("0.##");
 
@@ -209,10 +269,11 @@ namespace Byname.Titles
             var reads = new[] { stat };
             return new TitleFragment(
                 id, slot, category, rarity, text,
-                s => s.Get(stat) >= threshold,
+                s => s.Get(stat) >= Scaled(category, threshold),
                 reads,
-                s => threshold <= 0f ? 1f : s.Get(stat) / threshold,
-                describe: s => $"{Humanize(stat)}: {Number(s.Get(stat))} (needed {Number(threshold)})");
+                s => Progress(s.Get(stat), Scaled(category, threshold)),
+                describe: s => $"{Humanize(stat)}: {Number(s.Get(stat))} " +
+                               $"(needed {Number(Scaled(category, threshold))})");
         }
 
         /// <summary>
@@ -229,18 +290,69 @@ namespace Byname.Titles
             string enemyToken, float threshold)
             => new TitleFragment(
                 id, slot, TitleCategory.Combat, rarity, text,
-                s => s.GetEnemyKills(enemyToken) >= threshold,
+                s => s.GetEnemyKills(enemyToken) >= Scaled(TitleCategory.Combat, threshold),
                 Array.Empty<PlayerStatType>(),
-                s => threshold <= 0f ? 1f : s.GetEnemyKills(enemyToken) / threshold,
-                describe: s =>
-                {
-                    var creature = enemyToken.StartsWith("$enemy_")
-                        ? enemyToken.Substring("$enemy_".Length).Replace('_', ' ')
-                        : enemyToken;
-                    return $"{creature} kills: {Number(s.GetEnemyKills(enemyToken))} " +
-                           $"(needed {Number(threshold)})";
-                },
+                s => Progress(s.GetEnemyKills(enemyToken), Scaled(TitleCategory.Combat, threshold)),
+                describe: s => $"{CreatureName(enemyToken)} kills: {Number(s.GetEnemyKills(enemyToken))} " +
+                               $"(needed {Number(Scaled(TitleCategory.Combat, threshold))})",
                 sourceKeys: new[] { enemyToken });
+
+        /// <summary>
+        /// Deaths to one kind of creature, summed over every token given — so a draugr and
+        /// a draugr elite both count toward being killed by draugr.
+        ///
+        /// The game does not record this. Byname does, from the moment it is installed (see
+        /// DeathLedger), which means deaths from before then are invisible here.
+        /// </summary>
+        internal static TitleFragment KilledBy(
+            string id, TitleSlot slot, Rarity rarity, string text,
+            float threshold, params string[] creatureTokens)
+        {
+            float Count(IStatSource s) => creatureTokens.Sum(t => s.GetDeathsBy(t));
+            return new TitleFragment(
+                id, slot, TitleCategory.Death, rarity, text,
+                s => Count(s) >= Scaled(TitleCategory.Death, threshold),
+                Array.Empty<PlayerStatType>(),
+                s => Progress(Count(s), Scaled(TitleCategory.Death, threshold)),
+                describe: s => $"killed by {CreatureName(creatureTokens[0])}: {Number(Count(s))} " +
+                               $"(needed {Number(Scaled(TitleCategory.Death, threshold))})",
+                sourceKeys: creatureTokens.Select(t => "killedby:" + t).ToArray());
+        }
+
+        /// <summary>
+        /// Deaths in one biome, whatever the cause: drowning in the swamp counts as dying to
+        /// the swamp. Recorded by Byname, so like <see cref="KilledBy"/> it only counts
+        /// deaths since installation. <paramref name="biome"/> is a Heightmap.Biome name.
+        /// </summary>
+        internal static TitleFragment DiedIn(
+            string id, TitleSlot slot, Rarity rarity, string text, string biome, float threshold)
+            => new TitleFragment(
+                id, slot, TitleCategory.Death, rarity, text,
+                s => s.GetDeathsIn(biome) >= Scaled(TitleCategory.Death, threshold),
+                Array.Empty<PlayerStatType>(),
+                s => Progress(s.GetDeathsIn(biome), Scaled(TitleCategory.Death, threshold)),
+                describe: s => $"deaths in the {BiomeName(biome)}: {Number(s.GetDeathsIn(biome))} " +
+                               $"(needed {Number(Scaled(TitleCategory.Death, threshold))})",
+                sourceKeys: new[] { "diedin:" + biome });
+
+        private static float Progress(float value, float threshold) =>
+            threshold <= 0f ? 1f : value / threshold;
+
+        private static string CreatureName(string token) =>
+            token.StartsWith("$enemy_")
+                ? token.Substring("$enemy_".Length).Replace('_', ' ')
+                : token;
+
+        private static string BiomeName(string biome)
+        {
+            switch (biome)
+            {
+                case "BlackForest": return "black forest";
+                case "AshLands": return "ashlands";
+                case "DeepNorth": return "deep north";
+                default: return biome.ToLowerInvariant();
+            }
+        }
 
         /// <summary>A fragment with no condition, used to guarantee a fresh character is titled.</summary>
         internal static TitleFragment Always(
@@ -276,12 +388,20 @@ namespace Byname.Titles
             Slots = ParseSlots(pattern);
         }
 
-        internal string Render(IReadOnlyDictionary<TitleSlot, TitleFragment> chosen)
+        /// <summary>Renders with each fragment's first wording, for tooling that has no player.</summary>
+        internal string Render(IReadOnlyDictionary<TitleSlot, TitleFragment> chosen) =>
+            Render(chosen, f => f.Text);
+
+        internal string Render(IReadOnlyDictionary<TitleSlot, TitleFragment> chosen, long playerId) =>
+            Render(chosen, f => f.TextFor(playerId));
+
+        private string Render(
+            IReadOnlyDictionary<TitleSlot, TitleFragment> chosen, Func<TitleFragment, string> word)
         {
             var text = Pattern;
             foreach (var pair in chosen)
             {
-                text = text.Replace(Token(pair.Key), pair.Value.Text);
+                text = text.Replace(Token(pair.Key), word(pair.Value));
             }
             return Capitalize(text);
         }
@@ -323,14 +443,48 @@ namespace Byname.Titles
         internal Rarity Rarity { get; }
         internal IReadOnlyList<TitleFragment> Parts { get; }
 
-        internal ComposedTitle(string text, Rarity rarity, IReadOnlyList<TitleFragment> parts)
+        /// <summary>The wording each part rendered as, in the same order as <see cref="Parts"/>.</summary>
+        internal IReadOnlyList<string> Words { get; }
+
+        /// <summary>What the title scored in selection. Logged, so tuning weights has a number to watch.</summary>
+        internal float Score { get; }
+
+        internal ComposedTitle(
+            string text, Rarity rarity, IReadOnlyList<TitleFragment> parts,
+            IReadOnlyList<string> words, float score)
         {
             Text = text;
             Rarity = rarity;
             Parts = parts;
+            Words = words;
+            Score = score;
         }
 
         internal string Describe() =>
-            $"\"{Text}\" [{Rarity}] from {string.Join(" + ", Parts.Select(p => p.Id).ToArray())}";
+            $"\"{Text}\" [{Rarity}, score {Score:0.##}] from " +
+            string.Join(" + ", Parts.Select(p => p.Id).ToArray());
+    }
+
+    /// <summary>
+    /// Default per-category tuning, shared by the real config and the title-preview tool
+    /// so the two cannot disagree about what "default settings" means.
+    /// </summary>
+    internal static class CategoryDefaults
+    {
+        /// <summary>
+        /// Everyone on a shared server builds, chops and travels, so those deeds say the
+        /// least about any one player. Deaths say the most: nobody chooses how they die.
+        /// </summary>
+        internal static float Weight(TitleCategory category)
+        {
+            switch (category)
+            {
+                case TitleCategory.Building: return 0.85f;
+                case TitleCategory.Travel: return 0.85f;
+                case TitleCategory.Harvest: return 0.9f;
+                case TitleCategory.Death: return 1.2f;
+                default: return 1f;
+            }
+        }
     }
 }

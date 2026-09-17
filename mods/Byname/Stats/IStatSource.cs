@@ -20,5 +20,15 @@ namespace Byname.Stats
         /// as "no particular style" rather than as a false claim of specialism.
         /// </summary>
         KillModifiers DominantKillStyle(float minimumShare = 0.6f);
+
+        /// <summary>
+        /// Deaths to one creature, keyed by its localisation token. Valheim only records
+        /// "killed by an enemy", so this comes from Byname's own ledger and starts at zero
+        /// the day the mod is installed.
+        /// </summary>
+        float GetDeathsBy(string creatureToken);
+
+        /// <summary>Deaths in one biome, by Heightmap.Biome name. Byname's own ledger, like <see cref="GetDeathsBy"/>.</summary>
+        float GetDeathsIn(string biome);
     }
 }

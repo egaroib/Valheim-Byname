@@ -19,7 +19,7 @@ namespace Byname.Commands
         public override string Name => "byname";
 
         public override string Help =>
-            "Explain your current title: what earned it, and what you are closest to earning next.";
+            "Explain your current title and what earned it.";
 
         /// <summary>
         /// Not a cheat, so it works without devcommands. It only reads the player's own

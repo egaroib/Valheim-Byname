@@ -16,10 +16,12 @@ namespace Byname.Stats
     internal sealed class LifetimeStatSource : IStatSource
     {
         private readonly PlayerProfile.PlayerStats _stats;
+        private readonly DeathLedger _deaths;
 
-        internal LifetimeStatSource(PlayerProfile profile)
+        internal LifetimeStatSource(PlayerProfile profile, DeathLedger deaths)
         {
             _stats = profile.m_playerStats[0];
+            _deaths = deaths ?? DeathLedger.Empty;
         }
 
         internal PlayerProfile.PlayerStats Raw => _stats;
@@ -81,6 +83,10 @@ namespace Byname.Stats
             return leader.Value / overall >= minimumShare ? leader.Key : KillModifiers.MixedAndTotal;
         }
 
+        public float GetDeathsBy(string creatureToken) => _deaths.By(creatureToken);
+
+        public float GetDeathsIn(string biome) => _deaths.In(biome);
+
         private static float Sum(Dictionary<string, float> d)
         {
             if (d == null) return 0f;
@@ -103,13 +109,16 @@ namespace Byname.Stats
     {
         private readonly LifetimeStatSource _lifetime;
         private readonly IReadOnlyDictionary<PlayerStatType, float> _baseline;
+        private readonly DeathLedger _worldDeaths;
 
         internal WorldStatSource(
             LifetimeStatSource lifetime,
-            IReadOnlyDictionary<PlayerStatType, float> baseline)
+            IReadOnlyDictionary<PlayerStatType, float> baseline,
+            DeathLedger worldDeaths)
         {
             _lifetime = lifetime;
             _baseline = baseline;
+            _worldDeaths = worldDeaths ?? DeathLedger.Empty;
         }
 
         public float Get(PlayerStatType stat)
@@ -133,5 +142,10 @@ namespace Byname.Stats
 
         public KillModifiers DominantKillStyle(float minimumShare = 0.6f)
             => _lifetime.DominantKillStyle(minimumShare);
+
+        // The ledger keeps a per-world tally of its own, so no baseline is needed here.
+        public float GetDeathsBy(string creatureToken) => _worldDeaths.By(creatureToken);
+
+        public float GetDeathsIn(string biome) => _worldDeaths.In(biome);
     }
 }

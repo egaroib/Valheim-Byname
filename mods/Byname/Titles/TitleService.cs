@@ -102,7 +102,8 @@ namespace Byname.Titles
 
         internal static IStatSource BuildStatSource(Player player)
         {
-            var lifetime = new LifetimeStatSource(Game.instance.GetPlayerProfile());
+            var lifetime = new LifetimeStatSource(
+                Game.instance.GetPlayerProfile(), DeathLedger.Read(player, null));
             if (BynameConfig.Scope.Value != StatScope.World) return lifetime;
 
             var worldUid = ZNet.instance != null ? ZNet.instance.GetWorldUID() : 0L;
@@ -118,7 +119,7 @@ namespace Byname.Titles
                 BynamePlugin.LogInfo($"World scope: baselined {baseline.Count} stat(s) for world {worldUid}.");
             }
 
-            return new WorldStatSource(lifetime, baseline);
+            return new WorldStatSource(lifetime, baseline, DeathLedger.Read(player, worldUid));
         }
 
         /// <summary>
@@ -169,9 +170,9 @@ namespace Byname.Titles
             }
 
             lines.Add("");
-            foreach (var part in composed.Parts)
+            for (var i = 0; i < composed.Parts.Count; i++)
             {
-                lines.Add($"  {part.Text,-18} {part.Describe(stats)}");
+                lines.Add($"  {composed.Words[i],-18} {composed.Parts[i].Describe(stats)}");
             }
 
             var day = EnvMan.instance != null ? EnvMan.instance.GetDay() : 0;

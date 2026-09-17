@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+- Added titles for what keeps killing you and where, recorded from your next death onward
+- Added 2-4 wordings per title, fixed per player, and about 90 new titles
+- Added rarer kill titles at higher counts per creature, e.g. 250, 600 and 1,500 boars
+- Changed walls, floors, roofs, travel and air distance to need far more before they win
+- Added admin-synced Weights and Thresholds per category to tune what shows up
+
 ## 0.2.0
 
 - Added `/byname`, which explains the standing title: which fragment earned each slot, the

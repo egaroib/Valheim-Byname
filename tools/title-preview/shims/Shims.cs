@@ -25,5 +25,11 @@ namespace Byname.Config
         internal static HashSet<string> Blocked = new HashSet<string>();
         internal static bool CategoryEnabled(TitleCategory c) => !Disabled.Contains(c);
         internal static bool IsBlocked(string id) => Blocked.Contains(id);
+        internal static Dictionary<TitleCategory, float> WeightOverrides = new Dictionary<TitleCategory, float>();
+        internal static Dictionary<TitleCategory, float> ThresholdOverrides = new Dictionary<TitleCategory, float>();
+        internal static float Weight(TitleCategory c) =>
+            WeightOverrides.TryGetValue(c, out var w) ? w : CategoryDefaults.Weight(c);
+        internal static float ThresholdScale(TitleCategory c) =>
+            ThresholdOverrides.TryGetValue(c, out var t) ? t : 1f;
     }
 }
