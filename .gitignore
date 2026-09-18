@@ -17,6 +17,7 @@
 /tools/*
 !/tools/Directory.Build.props
 !/tools/title-preview/
+!/tools/check-deps.sh
 
 # Machine-specific paths. Environment.props is generated from valheim.env by the toolchain
 # and points at one particular Steam install and Gale profile.
