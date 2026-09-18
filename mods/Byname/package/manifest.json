@@ -5,6 +5,6 @@
   "description": "Earn a Viking byname from what you actually do. Titles generate from your own deeds and change as you play.",
   "dependencies": [
     "denikson-BepInExPack_Valheim-5.4.2350",
-    "ValheimModding-Jotunn-2.30.0"
+    "ValheimModding-Jotunn-2.30.1"
   ]
 }
