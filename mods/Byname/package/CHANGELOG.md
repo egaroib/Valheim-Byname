@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+- Fixed the title being drawn across the health bar. It was placed a fixed distance below
+  the nameplate's origin, which is the bar's own row — the title is now slotted into the
+  measured gap between the name and whatever is drawn under it
+- `SecondLineOffset` is replaced by `SecondLineNudge`, which adjusts the measured position
+  instead of setting it outright, and defaults to 0
+
 ## 0.3.0
 - Added titles for what keeps killing you and where, recorded from your next death onward
 - Added 2-4 wordings per title, fixed per player, and about 90 new titles

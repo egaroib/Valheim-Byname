@@ -140,7 +140,7 @@ floors and pieces before a building word is earned. Default `1`.
 | Setting | Default | What it does |
 |---|---|---|
 | `Placement` | `SecondLine` | `SecondLine` gives the title its own line under the name. `Suffix` appends it to the name instead, adding no vertical space |
-| `SecondLineOffset` | `-12` | How far below the name the title sits |
+| `SecondLineNudge` | `0` | Fine adjustment of the title line, positive up. The title is placed by measuring the nameplate — centred between the bottom of the name and the top of the health bar, or of the guild tag when Guilds is showing one — so this should only be needed if that looks off on your screen |
 | `ShowRarityColor` | `true` | Tint the title by rarity |
 | `ShowChangeToast` | `true` | Centre-screen message when your title changes |
 | `ShowChangeInChat` | `true` | Also write it to your chat window, where it stays in the scrollback. Local only — nothing is sent to the server |

@@ -62,7 +62,7 @@ namespace Byname.Config
 
         // --- Appearance (local) ----------------------------------------------
         internal static ConfigEntry<NameplatePlacement> Placement;
-        internal static ConfigEntry<float> SecondLineOffset;
+        internal static ConfigEntry<float> SecondLineNudge;
         internal static ConfigEntry<bool> ShowRarityColor;
         internal static ConfigEntry<bool> ShowChangeToast;
         internal static ConfigEntry<bool> ShowChangeInChat;
@@ -135,15 +135,15 @@ namespace Byname.Config
                 "it to the name instead, adding no vertical space — use Suffix if you " +
                 "run Guilds and the stacked name/guild/title plate looks cramped.");
 
-            SecondLineOffset = config.Bind(
-                "Appearance", "SecondLineOffset", -12f,
+            SecondLineNudge = config.Bind(
+                "Appearance", "SecondLineNudge", 0f,
                 new ConfigDescription(
-                    "Vertical offset of the title line below the player name, in nameplate " +
-                    "units. Doubled automatically when Guilds is showing a guild tag, so " +
-                    "the title sits below it rather than on top of it. Exposed because the " +
-                    "nameplate layout lives in a Unity prefab and the right value is " +
-                    "whatever looks correct on your screen.",
-                    new AcceptableValueRange<float>(-40f, 0f)));
+                    "Fine adjustment of the title line, in nameplate units, positive up. " +
+                    "The title is normally placed by measuring the nameplate: it is " +
+                    "centred in the gap between the bottom of the name and the top of the " +
+                    "health bar, or of the guild tag when Guilds is showing one. Leave " +
+                    "this at 0 unless the result looks off on your screen.",
+                    new AcceptableValueRange<float>(-20f, 20f)));
 
             ShowRarityColor = config.Bind(
                 "Appearance", "ShowRarityColor", true,
