@@ -26,7 +26,7 @@ namespace Byname
     {
         public const string PluginGuid = "com.ragemedia.byname";
         public const string PluginName = "Byname";
-        public const string PluginVersion = "0.3.1";
+        public const string PluginVersion = "0.3.2";
 
         internal static BynamePlugin Instance;
 

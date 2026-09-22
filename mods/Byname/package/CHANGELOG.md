@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.2
+- Changed the required Jotunn version to 2.30.2, matching servers on the latest Jotunn
+
 ## 0.3.1
 - Fixed the title being drawn across the health bar. It was placed a fixed distance below
   the nameplate's origin, which is the bar's own row — the title is now slotted into the
